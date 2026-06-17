@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фотоальбом</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  header { max-width: 1200px; margin: 0 auto 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;}
+  h1 { font-weight: 600; }
+  .sub { color:#64748b; font-size:14px;}
+
+  .topbar { display:flex; gap:10px; }
+  .btn {
+    padding: 10px 18px; border:none; border-radius:8px; cursor:pointer;
+    font-size:14px; font-weight:600; transition: background .2s;
+  }
+  .btn-primary { background:#38bdf8; color:#0f172a; }
+  .btn-primary:hover { background:#0ea5e9; }
+  .btn-ghost { background:#1e293b; color:#e2e8f0; }
+  .btn-ghost:hover { background:#334155; }
+  .btn:disabled { opacity:.5; cursor:default; }
+
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .photo {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #1e293b;
+    aspect-ratio: 1;
+    cursor: pointer;
+  }
+  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
+  .photo:hover img { transform: scale(1.05); }
+  .photo .del {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(220,38,38,.9); color:#fff; border:none;
+    border-radius:50%; width:30px; height:30px; cursor:pointer; font-size:16px;
+    opacity:0; transition:opacity .2s;
+  }
+  .photo:hover .del { opacity:1; }
+  .empty { text-align: center; color: #64748b; margin-top: 60px; font-size: 16px;}
+
+  /* Лайтбокс */
+  .lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.92); z-index: 100;
+    justify-content: center; align-items: center; padding: 20px;
+  }
+  .lightbox.active { display:flex; }
+  .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; }
+  .lightbox .close { position:absolute; top:20px; right:28px; color:#fff; font-size:40px; cursor:pointer; line-height:1; }
+  .lightbox .nav { position:absolute; top:50%; transform:translateY(-50%); color:#fff; font-size:50px; cursor:pointer; user-select:none; padding:16px; }
+  .lightbox .prev { left:10px; }
+  .lightbox .next { right:10px; }
+
+  /* Гейт / модалки */
+  .gate, .modal {
+    position: fixed; inset:0; background: rgba(15,23,42,.95);
+    display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:200;
+  }
+  .modal { display:none; }
+  .modal.active { display:flex; }
+  .box {
+    background:#1e293b; padding:28px; border-radius:14px; width:340px; max-width:90vw;
+  }
+  .box h2 { font-weight:500; margin-bottom:16px; text-align:center;}
+  .box input {
+    width:100%; padding:12px 16px; border-radius:8px; border:1px solid #334155;
+    background:#0f172a; color:#e2e8f0; font-size:16px; margin-bottom:10px;
+  }
+  .box .row { display:flex; gap:10px; }
+  .box .btn { flex:1; }
+  .err { color:#f87171; font-size:14px; height:18px; margin-bottom:8px;}
+  .hint { color:#64748b; font-size:13px; text-align:center; margin-top:14px;}
+  .drop {
+    border:2px dashed #475569; border-radius:10px; padding:30px; text-align:center;
+    cursor:pointer; transition:all .2s; margin-bottom:14px;
+  }
+  .drop:hover, .drop.over { border-color:#38bdf8; background:#0f172a; }
+  .progress { height:6px; background:#334155; border-radius:3px; overflow:hidden; margin-bottom:10px; display:none;}
+  .progress.active { display:block; }
+  .progress > div { height:100%; background:#38bdf8; width:0; transition:width .2s; }
+</style>
+</head>
+<body>
+
+<!-- Вход (пароль просмотра) -->
+<div class="gate" id="gate">
+  <div class="box">
+    <h2>🔒 Введите пароль</h2>
+    <input type="password" id="passInput" placeholder="Пароль" autofocus>
+    <div class="err" id="passErr"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="enterView()">Войти</button>
+  </div>
+</div>
+
+<!-- Шапка -->
+<header>
+  <div>
+    <h1>📷 Фотоальбом</h1>
+    <p class="sub">Нажми на фото, чтобы увеличить</p>
+  </div>
+  <div class="topbar">
+    <button class="btn btn-ghost" id="adminBtn" style="display:none" onclick="openAdmin()">＋ Загрузить</button>
+    <button class="btn btn-ghost" onclick="logout()">Выйти</button>
+  </div>
+</header>
+
+<div class="gallery" id="gallery"></div>
+<p class="empty" id="empty" style="display:none">Пока нет фото.</p>
+
+<!-- Лайтбокс -->
+<div class="lightbox" id="lightbox">
+  <span class="close" onclick="closeLightbox()">&times;</span>
+  <span class="nav prev" onclick="step(-1)">&#8249;</span>
+  <img id="lbImg" src="">
+  <span class="nav next" onclick="step(1)">&#8250;</span>
+</div>
+
+<!-- Модалка загрузки -->
+<div class="modal" id="uploadModal">
+  <div class="box">
+    <h2>＋ Загрузить фото</h2>
+    <div class="drop" id="dropZone">
+      <div style="font-size:36px">⬆️</div>
+      <p style="color:#94a3b8; margin-top:8px">Перетащи или нажми</p>
+    </div>
+    <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+    <div class="progress" id="progress"><div></div></div>
+    <div class="err" id="upErr"></div>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closeAdmin()">Отмена</button>
+      <button class="btn btn-primary" onclick="loadPhotos(); closeAdmin();">Готово</button>
+    </div>
+    <p class="hint">Файлы сразу появляются в галерее.</p>
+  </div>
+</div>
+
+<!-- Модалка входа админа -->
+<div class="modal" id="adminModal">
+  <div class="box">
+    <h2>🔑 Пароль администратора</h2>
+    <input type="password" id="adminInput" placeholder="Админ-пароль">
+    <div class="err" id="adminErr"></div>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="closeModal('adminModal')">Отмена</button>
+      <button class="btn btn-primary" onclick="enterAdmin()">Войти</button>
+    </div>
+  </div>
+</div>
+
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ====== НАСТРОЙКИ ======
+// После регистрации на supabase.com вставь свои значения (см. README):
+const SUPABASE_URL = "https://qsxzzfvfbukqhhifueed.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzeHp6ZnZmYnVrcWhoaXVmZWVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MzAyNzAsImV4cCI6MjA5NzMwNjI3MH0.-2NTQkdGXAX1RjXmrgUzwD5JLnsEn711jrzNNldWDaM";
+const BUCKET = "photos";
+
+// Пароли
+const VIEW_PASSWORD  = "view";   // пароль для просмотра (для тех, кому даёшь ссылку)
+const ADMIN_PASSWORD = "admin";  // пароль для загрузки/удаления (только для тебя)
+// ========================
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let photos = [];
+let current = 0;
+let isAdmin = false;
+
+// === Вход (просмотр) ===
+document.getElementById('passInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') enterView();
+});
+function enterView() {
+  if (document.getElementById('passInput').value === VIEW_PASSWORD) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('adminBtn').style.display = 'inline-block';
+    loadPhotos();
+  } else {
+    document.getElementById('passErr').textContent = 'Неверный пароль';
+  }
+}
+function logout() { location.reload(); }
+
+// === Загрузка списка фото ===
+async function loadPhotos() {
+  try {
+    const { data, error } = await sb.storage.from(BUCKET).list('', { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) throw error;
+    photos = data.filter(f => !f.id.endsWith('/')); // пропускаем папки
+  } catch (e) {
+    console.error(e);
+    photos = [];
+  }
+  render();
+}
+
+function url(name) {
+  return sb.storage.from(BUCKET).getPublicUrl(name).data.publicUrl;
+}
+
+function render() {
+  const g = document.getElementById('gallery');
+  g.innerHTML = '';
+  document.getElementById('empty').style.display = photos.length ? 'none' : 'block';
+  photos.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'photo';
+    div.innerHTML = `<img src="${url(p.name)}" alt="" loading="lazy">` +
+      (isAdmin ? `<button class="del" onclick="event.stopPropagation(); delPhoto('${p.name}')">✕</button>` : '');
+    div.onclick = () => openLightbox(i);
+    g.appendChild(div);
+  });
+}
+
+// === Лайтбокс ===
+function openLightbox(i) {
+  current = i;
+  document.getElementById('lbImg').src = url(photos[i].name);
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+function step(d) {
+  current = (current + d + photos.length) % photos.length;
+  document.getElementById('lbImg').src = url(photos[current].name);
+}
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target.id === 'lightbox') closeLightbox();
+});
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('active')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+
+// === Админ-вход ===
+function openAdmin() {
+  if (isAdmin) { openModal('uploadModal'); return; }
+  openModal('adminModal');
+}
+function enterAdmin() {
+  if (document.getElementById('adminInput').value === ADMIN_PASSWORD) {
+    isAdmin = true;
+    closeModal('adminModal');
+    openModal('uploadModal');
+  } else {
+    document.getElementById('adminErr').textContent = 'Неверный пароль';
+  }
+}
+
+// === Загрузка файлов ===
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+async function handleFiles(files) {
+  if (!isAdmin) { document.getElementById('upErr').textContent = 'Нужен админ-пароль'; return; }
+  const prog = document.getElementById('progress');
+  prog.classList.add('active');
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (!f.type.startsWith('image/')) continue;
+    // уникальное имя, чтобы не перетирать
+    const ext = f.name.split('.').pop();
+    const path = `${Date.now()}_${i}.${ext}`;
+    const { error } = await sb.storage.from(BUCKET).upload(path, f);
+    if (error) { document.getElementById('upErr').textContent = 'Ошибка: ' + error.message; prog.classList.remove('active'); return; }
+    prog.firstElementChild.style.width = ((i + 1) / files.length * 100) + '%';
+  }
+  prog.classList.remove('active');
+  prog.firstElementChild.style.width = '0';
+  fileInput.value = '';
+}
+
+// === Удаление ===
+async function delPhoto(name) {
+  if (!confirm('Удалить фото?')) return;
+  const { error } = await sb.storage.from(BUCKET).remove([name]);
+  if (error) { alert('Ошибка: ' + error.message); return; }
+  loadPhotos();
+}
+
+// === Утилиты для модалок ===
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+  document.getElementById('adminErr').textContent = '';
+  document.getElementById('upErr').textContent = '';
+}
+function closeAdmin() { closeModal('uploadModal'); }
+</script>
+</body>
+</html>
