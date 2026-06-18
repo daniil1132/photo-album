@@ -381,7 +381,8 @@ async function loadPhotos() {
     else {
       const data = await res.json();
       photos = (Array.isArray(data) ? data : []).filter(f => f.type === 'file');
-      photos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      // Имена начинаются с timestamp (Date.now()) — сортируем по убыванию (новые сверху)
+      photos.sort((a, b) => b.name.localeCompare(a.name));
     }
   } catch (e) { console.error(e); photos = []; }
   buildAlbums();
