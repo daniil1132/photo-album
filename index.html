@@ -10,11 +10,13 @@
     --bg: #0f172a; --bg2: #1e293b; --bg3: #334155; --text: #e2e8f0; --text2: #94a3b8;
     --text3: #64748b; --accent: #38bdf8; --accent2: #0ea5e9; --danger: #f87171;
     --skeleton: #1e293b; --skeleton2: #334155; --overlay: rgba(0,0,0,.92);
+    --check-bg: #38bdf8;
   }
   [data-theme="light"] {
     --bg: #f8fafc; --bg2: #ffffff; --bg3: #e2e8f0; --text: #0f172a; --text2: #475569;
     --text3: #94a3b8; --accent: #0284c7; --accent2: #0369a1; --danger: #ef4444;
     --skeleton: #e2e8f0; --skeleton2: #cbd5e1; --overlay: rgba(255,255,255,.95);
+    --check-bg: #0284c7;
   }
   body {
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -25,16 +27,18 @@
   h1 { font-weight: 600; }
   .sub { color:var(--text3); font-size:14px;}
   .counter { color:var(--accent); font-weight:600;}
-  .topbar { display:flex; gap:10px; align-items:center; }
+  .topbar { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
   .btn {
     padding: 10px 18px; border:none; border-radius:8px; cursor:pointer;
-    font-size:14px; font-weight:600; transition: background .2s; color:var(--text);
+    font-size:14px; font-weight:600; transition: all .2s; color:var(--text);
     background: var(--bg2);
   }
   .btn:hover { background: var(--bg3); }
   .btn-primary { background:var(--accent); color:#0f172a; }
   .btn-primary:hover { background:var(--accent2); }
   .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn-danger { background: var(--danger); color:#fff; }
+  .btn-danger:hover { opacity:.85; }
 
   /* Альбомы */
   .albums { max-width: 1200px; margin: 0 auto 24px; display:flex; gap:8px; flex-wrap:wrap; }
@@ -45,20 +49,25 @@
   }
   .album-btn:hover, .album-btn.active { border-color:var(--accent); color:var(--accent); background:var(--bg); }
 
-  /* Галерея */
+  /* Мозаичная галерея */
   .gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 16px;
+    columns: 4;
+    column-gap: 16px;
     max-width: 1200px;
     margin: 0 auto;
   }
+  @media (max-width: 1100px) { .gallery { columns: 3; } }
+  @media (max-width: 750px)  { .gallery { columns: 2; } }
+  @media (max-width: 480px)  { .gallery { columns: 1; } }
+
   .photo {
     position: relative; border-radius: 12px; overflow: hidden;
-    background: var(--bg2); aspect-ratio: 1; cursor: pointer;
+    background: var(--bg2); cursor: pointer;
+    break-inside: avoid; margin-bottom: 16px;
+    display: inline-block; width: 100%;
   }
-  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
-  .photo:hover img { transform: scale(1.05); }
+  .photo img { width: 100%; height: auto; display: block; transition: transform .3s; }
+  .photo:hover img { transform: scale(1.03); }
   .photo .overlay {
     position: absolute; inset:0; background: linear-gradient(transparent 50%, rgba(0,0,0,.6));
     opacity:0; transition:opacity .2s; pointer-events:none;
@@ -68,15 +77,43 @@
     position: absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:opacity .2s;
   }
   .photo:hover .actions { opacity:1; }
-  .photo .actions button {
+  .photo .actions button, .photo .check-wrap {
     background: rgba(0,0,0,.7); color:#fff; border:none;
     border-radius:50%; width:30px; height:30px; cursor:pointer; font-size:14px;
     display:flex; align-items:center; justify-content:center;
+    transition: background .2s;
   }
   .photo .actions button:hover { background: rgba(0,0,0,.9); }
 
+  /* Чекбокс мультивыделения */
+  .check-wrap {
+    position: absolute; top:8px; left:8px; z-index: 5;
+    opacity: 0; transition: opacity .2s;
+  }
+  body.select-mode .check-wrap { opacity: 1; }
+  .check-wrap.checked {
+    background: var(--check-bg) !important; color: #fff;
+  }
+  .check-wrap.checked::after { content: '✓'; }
+  body.select-mode .photo { cursor: default; }
+
+  /* Плавающая панель выделения */
+  .select-bar {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--bg2); border: 1px solid var(--bg3);
+    border-radius: 14px; padding: 12px 20px;
+    display: flex; gap: 12px; align-items: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,.4);
+    z-index: 150; transition: transform .3s ease;
+  }
+  .select-bar.visible { transform: translateX(-50%) translateY(0); }
+  .select-bar .count { color: var(--accent); font-weight: 600; font-size: 14px; white-space: nowrap; }
+
   /* Скелетоны */
-  .skeleton { background: var(--skeleton); border-radius: 12px; aspect-ratio: 1; overflow:hidden; position:relative; }
+  .skeleton {
+    background: var(--skeleton); border-radius: 12px; overflow:hidden; position:relative;
+    break-inside: avoid; margin-bottom: 16px; display: inline-block; width: 100%;
+  }
   .skeleton::after {
     content:''; position:absolute; inset:0;
     background: linear-gradient(90deg, transparent 30%, var(--skeleton2) 50%, transparent 70%);
@@ -94,7 +131,9 @@
     touch-action: none; user-select: none;
   }
   .lightbox.active { display:flex; }
-  .lightbox img { max-width: 95%; max-height: 85vh; border-radius: 8px; transition: opacity .2s; }
+  .lightbox:fullscreen { background: #000; }
+  .lightbox:-webkit-full-screen { background: #000; }
+  .lightbox img { max-width: 95%; max-height: 85vh; border-radius: 8px; transition: opacity .15s; }
   .lightbox .close { position:absolute; top:20px; right:28px; color:var(--text); font-size:40px; cursor:pointer; line-height:1; z-index:10; }
   .lightbox .nav { position:absolute; top:50%; transform:translateY(-50%); color:var(--text); font-size:50px; cursor:pointer; user-select:none; padding:16px; z-index:10; }
   .lightbox .prev { left:10px; }
@@ -106,6 +145,7 @@
   .lb-bar button {
     background: rgba(0,0,0,.6); color:#fff; border:none;
     border-radius:8px; padding:8px 14px; cursor:pointer; font-size:14px;
+    transition: background .2s;
   }
   .lb-bar button:hover { background: rgba(0,0,0,.8); }
   .lb-bar button.active { background:var(--accent); color:#0f172a; }
@@ -143,12 +183,17 @@
   .quality-row input[type=range] { flex:1; accent-color:var(--accent); }
   .quality-row span { color:var(--accent); font-weight:600; min-width:36px; text-align:right; }
 
-  /* Тема */
   .theme-toggle {
     background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;
     padding:8px; border-radius:8px; transition: background .2s;
   }
   .theme-toggle:hover { background:var(--bg3); }
+  .select-toggle {
+    background:none; border:none; color:var(--text2); cursor:pointer; font-size:18px;
+    padding:8px; border-radius:8px; transition: all .2s;
+  }
+  .select-toggle:hover { background:var(--bg3); }
+  .select-toggle.active { color:var(--accent); background:var(--bg3); }
 </style>
 </head>
 <body>
@@ -171,6 +216,7 @@
   </div>
   <div class="topbar">
     <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему" id="themeBtn">🌙</button>
+    <button class="select-toggle" id="selectToggle" style="display:none" onclick="toggleSelectMode()" title="Мультивыделение">☑️</button>
     <button class="btn" id="adminBtn" style="display:none" onclick="openAdmin()">＋ Загрузить</button>
     <button class="btn" onclick="logout()">Выйти</button>
   </div>
@@ -185,6 +231,13 @@
 <div class="gallery" id="gallery"></div>
 <p class="empty" id="empty" style="display:none">Пока нет фото.</p>
 
+<!-- Плавающая панель -->
+<div class="select-bar" id="selectBar">
+  <span class="count" id="selectCount">0 выбрано</span>
+  <button class="btn btn-sm btn-danger" onclick="deleteSelected()">🗑 Удалить</button>
+  <button class="btn btn-sm" onclick="clearSelection()">Отмена</button>
+</div>
+
 <!-- Лайтбокс -->
 <div class="lightbox" id="lightbox">
   <span class="close" onclick="closeLightbox()">&times;</span>
@@ -194,6 +247,7 @@
   <div class="lb-bar">
     <button id="slideshowBtn" onclick="toggleSlideshow()" title="Слайдшоу">▶</button>
     <button onclick="downloadCurrent()" title="Скачать">📥</button>
+    <button id="fullscreenBtn" onclick="toggleFullscreen()" title="Полный экран">⛶</button>
   </div>
 </div>
 
@@ -271,6 +325,8 @@ let currentAlbum = '';
 let allAlbums = [];
 let touchStartX = 0;
 let touchEndX = 0;
+let selectMode = false;
+let selectedSet = new Set();
 
 // === Тема ===
 (function initTheme() {
@@ -325,7 +381,6 @@ async function loadPhotos() {
     else {
       const data = await res.json();
       photos = (Array.isArray(data) ? data : []).filter(f => f.type === 'file');
-      // Сортировка по дате создания (новые сверху)
       photos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
   } catch (e) { console.error(e); photos = []; }
@@ -337,9 +392,11 @@ function showSkeletons() {
   const g = document.getElementById('gallery');
   g.innerHTML = '';
   document.getElementById('empty').style.display = 'none';
+  const heights = [200, 280, 180, 260, 220, 300];
   for (let i = 0; i < 6; i++) {
     const s = document.createElement('div');
     s.className = 'skeleton';
+    s.style.height = heights[i % heights.length] + 'px';
     g.appendChild(s);
   }
 }
@@ -379,6 +436,8 @@ function applyAlbum() {
   } else {
     filteredPhotos = [...photos];
   }
+  selectedSet.clear();
+  updateSelectBar();
   render();
 }
 
@@ -387,24 +446,100 @@ function url(name) {
   return `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}/${PHOTOS_DIR}/${encodeURIComponent(name)}?t=${Date.now()}`;
 }
 
+// === Рендер мозаикой ===
 function render() {
   const g = document.getElementById('gallery');
   g.innerHTML = '';
   const n = filteredPhotos.length;
   document.getElementById('counter').textContent = n ? `(${n})` : '';
   document.getElementById('empty').style.display = n ? 'none' : 'block';
+
+  // Показать/скрыть кнопку выделения
+  document.getElementById('selectToggle').style.display = isAdmin && n > 0 ? 'inline-block' : 'none';
+
   filteredPhotos.forEach((p, i) => {
     const div = document.createElement('div');
     div.className = 'photo';
-    const dispName = p.name.replace(/^\d+_\d+_/, '').replace(/^\d{13}_/, '');
-    div.innerHTML = `<img src="${url(p.name)}" alt="" loading="lazy"><div class="overlay"></div>` +
+    div.dataset.index = i;
+
+    div.innerHTML =
+      `<div class="check-wrap ${selectedSet.has(i) ? 'checked' : ''}" onclick="event.stopPropagation(); toggleSelect(${i})"></div>` +
+      `<img src="${url(p.name)}" alt="" loading="lazy">` +
+      `<div class="overlay"></div>` +
       `<div class="actions">` +
       `<button onclick="event.stopPropagation(); downloadPhoto(${i})" title="Скачать">📥</button>` +
       (isAdmin ? `<button onclick="event.stopPropagation(); delPhoto(${i})" title="Удалить">✕</button>` : '') +
       `</div>`;
-    div.onclick = () => openLightbox(i);
+
+    if (!selectMode) {
+      div.onclick = () => openLightbox(i);
+    } else {
+      div.onclick = (e) => {
+        if (e.target.closest('.check-wrap') || e.target.closest('.actions')) return;
+        toggleSelect(i);
+      };
+    }
     g.appendChild(div);
   });
+}
+
+// === Мультивыделение ===
+function toggleSelectMode() {
+  selectMode = !selectMode;
+  document.body.classList.toggle('select-mode', selectMode);
+  document.getElementById('selectToggle').classList.toggle('active', selectMode);
+  if (!selectMode) { selectedSet.clear(); updateSelectBar(); }
+  render();
+}
+
+function toggleSelect(i) {
+  if (selectedSet.has(i)) selectedSet.delete(i);
+  else selectedSet.add(i);
+  // Обновить визуал только чекбокса
+  const cards = document.querySelectorAll('.photo');
+  if (cards[i]) {
+    const cw = cards[i].querySelector('.check-wrap');
+    if (cw) cw.classList.toggle('checked', selectedSet.has(i));
+  }
+  updateSelectBar();
+}
+
+function updateSelectBar() {
+  const bar = document.getElementById('selectBar');
+  const n = selectedSet.size;
+  document.getElementById('selectCount').textContent = n + ' выбрано';
+  bar.classList.toggle('visible', n > 0);
+}
+
+function clearSelection() {
+  selectedSet.clear();
+  updateSelectBar();
+  render();
+}
+
+async function deleteSelected() {
+  if (selectedSet.size === 0) return;
+  if (!confirm(`Удалить ${selectedSet.size} фото?`)) return;
+  const indices = [...selectedSet].sort((a, b) => b - a); // удаляем с конца
+  for (const i of indices) {
+    const p = filteredPhotos[i];
+    const res = await fetch(`${apiBase}/contents/${PHOTOS_DIR}/${p.name}?ref=${GH_BRANCH}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${ghToken}`,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message: `delete ${p.name}`, sha: p.sha, branch: GH_BRANCH })
+    });
+    if (!res.ok) {
+      let t = ''; try { t = await res.text(); } catch(e) {}
+      alert('Ошибка удаления ' + p.name + ': ' + t.slice(0, 80));
+    }
+  }
+  selectedSet.clear();
+  updateSelectBar();
+  loadPhotos();
 }
 
 // === Лайтбокс ===
@@ -415,7 +550,7 @@ function openLightbox(i) {
   document.getElementById('lightbox').classList.add('active');
   updateSlideshowBtn();
 }
-function closeLightbox() { stopSlideshow(); document.getElementById('lightbox').classList.remove('active'); }
+function closeLightbox() { stopSlideshow(); exitFullscreen(); document.getElementById('lightbox').classList.remove('active'); }
 function step(d) {
   current = (current + d + filteredPhotos.length) % filteredPhotos.length;
   document.getElementById('lbImg').src = url(filteredPhotos[current].name);
@@ -427,6 +562,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') step(-1);
   if (e.key === 'ArrowRight') step(1);
   if (e.key === ' ') { e.preventDefault(); toggleSlideshow(); }
+  if (e.key === 'f' || e.key === 'F') { e.preventDefault(); toggleFullscreen(); }
 });
 
 // === Свайп ===
@@ -457,6 +593,26 @@ function updateSlideshowBtn() {
   btn.textContent = slideshowOn ? '⏸' : '▶';
   btn.classList.toggle('active', slideshowOn);
 }
+
+// === Полноэкранный режим ===
+function toggleFullscreen() {
+  const lb = document.getElementById('lightbox');
+  if (!document.fullscreenElement) {
+    (lb.requestFullscreen || lb.webkitRequestFullscreen || lb.msRequestFullscreen).call(lb);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
+  }
+}
+function exitFullscreen() {
+  if (document.fullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('fullscreenBtn');
+  btn.textContent = document.fullscreenElement ? '⛶' : '⛶';
+  btn.title = document.fullscreenElement ? 'Выйти из полного экрана' : 'Полный экран';
+});
 
 // === Скачивание ===
 function downloadPhoto(i) {
@@ -549,7 +705,7 @@ async function handleFiles(files) {
     const compressed = await compressImage(f, quality);
     const sizeMB = (compressed.size / 1024 / 1024).toFixed(1);
     if (compressed.size > 45 * 1024 * 1024) {
-      document.getElementById('upErr').textContent = `Файл ${f.name} (${sizeMB} МБ) слишком большой даже после сжатия. Пропускаю.`;
+      document.getElementById('upErr').textContent = `Файл ${f.name} (${sizeMB} МБ) слишком большой. Пропускаю.`;
       continue;
     }
     const safe = f.name.replace(/[^a-zA-Z0-9._\-]/g, '_').replace(/\.[^.]+$/, '.jpg');
@@ -577,7 +733,7 @@ async function handleFiles(files) {
   fileInput.value = '';
 }
 
-// === Удаление ===
+// === Удаление одного ===
 async function delPhoto(i) {
   const p = filteredPhotos[i];
   if (!confirm('Удалить фото?')) return;
