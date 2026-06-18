@@ -1,30 +1,51 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Фотоальбом</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root, [data-theme="dark"] {
+    --bg: #0f172a; --bg2: #1e293b; --bg3: #334155; --text: #e2e8f0; --text2: #94a3b8;
+    --text3: #64748b; --accent: #38bdf8; --accent2: #0ea5e9; --danger: #f87171;
+    --skeleton: #1e293b; --skeleton2: #334155; --overlay: rgba(0,0,0,.92);
+  }
+  [data-theme="light"] {
+    --bg: #f8fafc; --bg2: #ffffff; --bg3: #e2e8f0; --text: #0f172a; --text2: #475569;
+    --text3: #94a3b8; --accent: #0284c7; --accent2: #0369a1; --danger: #ef4444;
+    --skeleton: #e2e8f0; --skeleton2: #cbd5e1; --overlay: rgba(255,255,255,.95);
+  }
   body {
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
-    min-height: 100vh;
-    padding: 24px;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 24px; transition: background .3s, color .3s;
   }
   header { max-width: 1200px; margin: 0 auto 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;}
   h1 { font-weight: 600; }
-  .sub { color:#64748b; font-size:14px;}
-  .topbar { display:flex; gap:10px; }
+  .sub { color:var(--text3); font-size:14px;}
+  .counter { color:var(--accent); font-weight:600;}
+  .topbar { display:flex; gap:10px; align-items:center; }
   .btn {
     padding: 10px 18px; border:none; border-radius:8px; cursor:pointer;
-    font-size:14px; font-weight:600; transition: background .2s;
+    font-size:14px; font-weight:600; transition: background .2s; color:var(--text);
+    background: var(--bg2);
   }
-  .btn-primary { background:#38bdf8; color:#0f172a; }
-  .btn-primary:hover { background:#0ea5e9; }
-  .btn-ghost { background:#1e293b; color:#e2e8f0; }
-  .btn-ghost:hover { background:#334155; }
+  .btn:hover { background: var(--bg3); }
+  .btn-primary { background:var(--accent); color:#0f172a; }
+  .btn-primary:hover { background:var(--accent2); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* Альбомы */
+  .albums { max-width: 1200px; margin: 0 auto 24px; display:flex; gap:8px; flex-wrap:wrap; }
+  .album-btn {
+    padding: 6px 16px; border-radius:20px; border:1px solid var(--bg3);
+    background:var(--bg2); color:var(--text2); cursor:pointer; font-size:14px;
+    transition: all .2s;
+  }
+  .album-btn:hover, .album-btn.active { border-color:var(--accent); color:var(--accent); background:var(--bg); }
+
+  /* Галерея */
   .gallery {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -34,56 +55,100 @@
   }
   .photo {
     position: relative; border-radius: 12px; overflow: hidden;
-    background: #1e293b; aspect-ratio: 1; cursor: pointer;
+    background: var(--bg2); aspect-ratio: 1; cursor: pointer;
   }
   .photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
   .photo:hover img { transform: scale(1.05); }
-  .photo .del {
-    position: absolute; top: 8px; right: 8px;
-    background: rgba(220,38,38,.9); color:#fff; border:none;
-    border-radius:50%; width:30px; height:30px; cursor:pointer; font-size:16px;
-    opacity:0; transition:opacity .2s;
+  .photo .overlay {
+    position: absolute; inset:0; background: linear-gradient(transparent 50%, rgba(0,0,0,.6));
+    opacity:0; transition:opacity .2s; pointer-events:none;
   }
-  .photo:hover .del { opacity:1; }
-  .empty { text-align: center; color: #64748b; margin-top: 60px; font-size: 16px;}
+  .photo:hover .overlay { opacity:1; }
+  .photo .actions {
+    position: absolute; top:8px; right:8px; display:flex; gap:6px; opacity:0; transition:opacity .2s;
+  }
+  .photo:hover .actions { opacity:1; }
+  .photo .actions button {
+    background: rgba(0,0,0,.7); color:#fff; border:none;
+    border-radius:50%; width:30px; height:30px; cursor:pointer; font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .photo .actions button:hover { background: rgba(0,0,0,.9); }
+
+  /* Скелетоны */
+  .skeleton { background: var(--skeleton); border-radius: 12px; aspect-ratio: 1; overflow:hidden; position:relative; }
+  .skeleton::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent 30%, var(--skeleton2) 50%, transparent 70%);
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+  .empty { text-align: center; color: var(--text3); margin-top: 60px; font-size: 16px;}
+
+  /* Лайтбокс */
   .lightbox {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.92); z-index: 100;
+    background: var(--overlay); z-index: 100;
     justify-content: center; align-items: center; padding: 20px;
+    touch-action: none; user-select: none;
   }
   .lightbox.active { display:flex; }
-  .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; }
-  .lightbox .close { position:absolute; top:20px; right:28px; color:#fff; font-size:40px; cursor:pointer; line-height:1; }
-  .lightbox .nav { position:absolute; top:50%; transform:translateY(-50%); color:#fff; font-size:50px; cursor:pointer; user-select:none; padding:16px; }
+  .lightbox img { max-width: 95%; max-height: 85vh; border-radius: 8px; transition: opacity .2s; }
+  .lightbox .close { position:absolute; top:20px; right:28px; color:var(--text); font-size:40px; cursor:pointer; line-height:1; z-index:10; }
+  .lightbox .nav { position:absolute; top:50%; transform:translateY(-50%); color:var(--text); font-size:50px; cursor:pointer; user-select:none; padding:16px; z-index:10; }
   .lightbox .prev { left:10px; }
   .lightbox .next { right:10px; }
+  .lb-bar {
+    position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+    display:flex; gap:10px; z-index:10;
+  }
+  .lb-bar button {
+    background: rgba(0,0,0,.6); color:#fff; border:none;
+    border-radius:8px; padding:8px 14px; cursor:pointer; font-size:14px;
+  }
+  .lb-bar button:hover { background: rgba(0,0,0,.8); }
+  .lb-bar button.active { background:var(--accent); color:#0f172a; }
+
+  /* Модалки */
   .gate, .modal {
-    position: fixed; inset:0; background: rgba(15,23,42,.95);
+    position: fixed; inset:0; background: var(--overlay);
     display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:200;
   }
   .modal { display:none; }
   .modal.active { display:flex; }
   .box {
-    background:#1e293b; padding:28px; border-radius:14px; width:360px; max-width:90vw;
+    background:var(--bg2); padding:28px; border-radius:14px; width:400px; max-width:90vw;
+    box-shadow: 0 25px 50px rgba(0,0,0,.3);
   }
   .box h2 { font-weight:500; margin-bottom:16px; text-align:center;}
   .box input {
-    width:100%; padding:12px 16px; border-radius:8px; border:1px solid #334155;
-    background:#0f172a; color:#e2e8f0; font-size:16px; margin-bottom:10px;
+    width:100%; padding:12px 16px; border-radius:8px; border:1px solid var(--bg3);
+    background:var(--bg); color:var(--text); font-size:16px; margin-bottom:10px;
   }
   .box .row { display:flex; gap:10px; }
   .box .btn { flex:1; }
-  .err { color:#f87171; font-size:14px; height:18px; margin-bottom:8px;}
-  .hint { color:#64748b; font-size:13px; text-align:center; margin-top:14px;}
+  .err { color:var(--danger); font-size:14px; height:18px; margin-bottom:8px;}
+  .hint { color:var(--text3); font-size:13px; text-align:center; margin-top:14px;}
   .drop {
-    border:2px dashed #475569; border-radius:10px; padding:30px; text-align:center;
+    border:2px dashed var(--bg3); border-radius:10px; padding:30px; text-align:center;
     cursor:pointer; transition:all .2s; margin-bottom:14px;
   }
-  .drop:hover, .drop.over { border-color:#38bdf8; background:#0f172a; }
-  .progress { height:6px; background:#334155; border-radius:3px; overflow:hidden; margin-bottom:10px; display:none;}
+  .drop:hover, .drop.over { border-color:var(--accent); background:var(--bg); }
+  .progress { height:6px; background:var(--bg3); border-radius:3px; overflow:hidden; margin-bottom:10px; display:none;}
   .progress.active { display:block; }
-  .progress > div { height:100%; background:#38bdf8; width:0; transition:width .2s; }
-  .spinner { color:#64748b; text-align:center; margin-top:40px; }
+  .progress > div { height:100%; background:var(--accent); width:0; transition:width .2s; }
+  .quality-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .quality-row label { color:var(--text2); font-size:14px; white-space:nowrap; }
+  .quality-row input[type=range] { flex:1; accent-color:var(--accent); }
+  .quality-row span { color:var(--accent); font-weight:600; min-width:36px; text-align:right; }
+
+  /* Тема */
+  .theme-toggle {
+    background:none; border:none; color:var(--text2); cursor:pointer; font-size:20px;
+    padding:8px; border-radius:8px; transition: background .2s;
+  }
+  .theme-toggle:hover { background:var(--bg3); }
 </style>
 </head>
 <body>
@@ -98,66 +163,86 @@
   </div>
 </div>
 
+<!-- Шапка -->
 <header>
   <div>
-    <h1>📷 Фотоальбом</h1>
+    <h1>📷 Фотоальбом <span class="counter" id="counter"></span></h1>
     <p class="sub">Нажми на фото, чтобы увеличить</p>
   </div>
   <div class="topbar">
-    <button class="btn btn-ghost" id="adminBtn" style="display:none" onclick="openAdmin()">＋ Загрузить</button>
-    <button class="btn btn-ghost" onclick="logout()">Выйти</button>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему" id="themeBtn">🌙</button>
+    <button class="btn" id="adminBtn" style="display:none" onclick="openAdmin()">＋ Загрузить</button>
+    <button class="btn" onclick="logout()">Выйти</button>
   </div>
 </header>
 
+<!-- Альбомы -->
+<div class="albums" id="albums" style="display:none">
+  <button class="album-btn active" onclick="setAlbum('')">Все</button>
+</div>
+
+<!-- Галерея -->
 <div class="gallery" id="gallery"></div>
-<p class="spinner" id="spinner">Загрузка…</p>
 <p class="empty" id="empty" style="display:none">Пока нет фото.</p>
 
+<!-- Лайтбокс -->
 <div class="lightbox" id="lightbox">
   <span class="close" onclick="closeLightbox()">&times;</span>
   <span class="nav prev" onclick="step(-1)">&#8249;</span>
   <img id="lbImg" src="">
   <span class="nav next" onclick="step(1)">&#8250;</span>
+  <div class="lb-bar">
+    <button id="slideshowBtn" onclick="toggleSlideshow()" title="Слайдшоу">▶</button>
+    <button onclick="downloadCurrent()" title="Скачать">📥</button>
+  </div>
 </div>
 
+<!-- Загрузка -->
 <div class="modal" id="uploadModal">
   <div class="box">
     <h2>＋ Загрузить фото</h2>
     <div class="drop" id="dropZone">
       <div style="font-size:36px">⬆️</div>
-      <p style="color:#94a3b8; margin-top:8px">Перетащи или нажми</p>
+      <p style="color:var(--text2); margin-top:8px">Перетащи или нажми</p>
     </div>
     <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+    <div class="quality-row">
+      <label>Качество:</label>
+      <input type="range" id="qualitySlider" min="10" max="100" value="80">
+      <span id="qualityVal">80%</span>
+    </div>
     <div class="progress" id="progress"><div></div></div>
     <div class="err" id="upErr"></div>
     <div class="row">
-      <button class="btn btn-ghost" onclick="closeAdmin()">Отмена</button>
+      <button class="btn" onclick="closeAdmin()">Отмена</button>
       <button class="btn btn-primary" onclick="loadPhotos(); closeAdmin();">Готово</button>
     </div>
-    <p class="hint">Файлы сразу появляются в галерее.</p>
+    <p class="hint">Файлы автоматически сжимаются и загружаются.</p>
   </div>
 </div>
 
+<!-- Админ-пароль -->
 <div class="modal" id="adminModal">
   <div class="box">
     <h2>🔑 Пароль администратора</h2>
     <input type="password" id="adminInput" placeholder="Админ-пароль">
     <div class="err" id="adminErr"></div>
     <div class="row">
-      <button class="btn btn-ghost" onclick="closeModal('adminModal')">Отмена</button>
+      <button class="btn" onclick="closeModal('adminModal')">Отмена</button>
       <button class="btn btn-primary" onclick="enterAdmin()">Войти</button>
     </div>
   </div>
 </div>
 
+<!-- Токен -->
 <div class="modal" id="tokenModal">
   <div class="box">
     <h2>🛡️ GitHub токен</h2>
-    <p class="hint" style="margin-top:0;margin-bottom:12px;">Нужен для загрузки фото. Введёшь один раз — запомнится.</p>
+    <p class="hint" style="margin-top:0;margin-bottom:12px;">Нужен для загрузки. Введёшь один раз — запомнится.</p>
     <input type="password" id="tokenInput" placeholder="github_pat_xxx...">
     <div class="err" id="tokenErr"></div>
     <div class="row">
-      <button class="btn btn-ghost" onclick="closeModal('tokenModal'); logout();">Отмена</button>
+      <button class="btn" onclick="closeModal('tokenModal'); logout();">Отмена</button>
       <button class="btn btn-primary" onclick="saveToken()">Сохранить</button>
     </div>
   </div>
@@ -176,14 +261,34 @@ const ADMIN_PASSWORD = "1234";
 
 const apiBase = `https://api.github.com/repos/${GH_USER}/${GH_REPO}`;
 let photos = [];
+let filteredPhotos = [];
 let current = 0;
 let isAdmin = false;
 let ghToken = localStorage.getItem('gh_token') || '';
+let slideshowTimer = null;
+let slideshowOn = false;
+let currentAlbum = '';
+let allAlbums = [];
+let touchStartX = 0;
+let touchEndX = 0;
+
+// === Тема ===
+(function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateThemeBtn(saved);
+})();
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeBtn(next);
+}
+function updateThemeBtn(t) { document.getElementById('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙'; }
 
 // === Вход ===
-document.getElementById('passInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') enterView();
-});
+document.getElementById('passInput').addEventListener('keydown', e => { if (e.key === 'Enter') enterView(); });
 
 function enterView() {
   if (document.getElementById('passInput').value === VIEW_PASSWORD) {
@@ -194,14 +299,13 @@ function enterView() {
     document.getElementById('passErr').textContent = 'Неверный пароль';
   }
 }
-
 function logout() { location.reload(); }
 
 // === Токен ===
 function saveToken() {
   const v = document.getElementById('tokenInput').value.trim();
   if (!v || !v.startsWith('github_pat_')) {
-    document.getElementById('tokenErr').textContent = 'Вставь токен (начинается с github_pat_)';
+    document.getElementById('tokenErr').textContent = 'Вставь токен (github_pat_...)';
     return;
   }
   ghToken = v;
@@ -210,10 +314,9 @@ function saveToken() {
   openModal('uploadModal');
 }
 
-// === Чтение списка фото ===
+// === Чтение фото ===
 async function loadPhotos() {
-  document.getElementById('spinner').style.display = 'block';
-  document.getElementById('empty').style.display = 'none';
+  showSkeletons();
   try {
     const res = await fetch(`${apiBase}/contents/${PHOTOS_DIR}?ref=${GH_BRANCH}`, {
       headers: { 'Accept': 'application/vnd.github+json' }
@@ -222,14 +325,64 @@ async function loadPhotos() {
     else {
       const data = await res.json();
       photos = (Array.isArray(data) ? data : []).filter(f => f.type === 'file');
+      // Сортировка по дате создания (новые сверху)
+      photos.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
-  } catch (e) {
-    console.error(e);
-    photos = [];
+  } catch (e) { console.error(e); photos = []; }
+  buildAlbums();
+  applyAlbum();
+}
+
+function showSkeletons() {
+  const g = document.getElementById('gallery');
+  g.innerHTML = '';
+  document.getElementById('empty').style.display = 'none';
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    s.className = 'skeleton';
+    g.appendChild(s);
+  }
+}
+
+// === Альбомы ===
+function buildAlbums() {
+  const albumSet = new Set(['']);
+  photos.forEach(p => {
+    const parts = p.name.split('__');
+    if (parts.length > 1) albumSet.add(parts[0]);
+  });
+  allAlbums = [...albumSet];
+  const container = document.getElementById('albums');
+  container.innerHTML = '';
+  if (allAlbums.length <= 1) { container.style.display = 'none'; return; }
+  container.style.display = 'flex';
+  allAlbums.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = 'album-btn' + (a === currentAlbum ? ' active' : '');
+    btn.textContent = a || 'Все';
+    btn.onclick = () => setAlbum(a);
+    container.appendChild(btn);
+  });
+}
+
+function setAlbum(a) {
+  currentAlbum = a;
+  document.querySelectorAll('.album-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === (a || 'Все'));
+  });
+  applyAlbum();
+}
+
+function applyAlbum() {
+  if (currentAlbum) {
+    filteredPhotos = photos.filter(p => p.name.startsWith(currentAlbum + '__'));
+  } else {
+    filteredPhotos = [...photos];
   }
   render();
 }
 
+// === URL ===
 function url(name) {
   return `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/${GH_BRANCH}/${PHOTOS_DIR}/${encodeURIComponent(name)}?t=${Date.now()}`;
 }
@@ -237,13 +390,18 @@ function url(name) {
 function render() {
   const g = document.getElementById('gallery');
   g.innerHTML = '';
-  document.getElementById('spinner').style.display = 'none';
-  document.getElementById('empty').style.display = photos.length ? 'none' : 'block';
-  photos.forEach((p, i) => {
+  const n = filteredPhotos.length;
+  document.getElementById('counter').textContent = n ? `(${n})` : '';
+  document.getElementById('empty').style.display = n ? 'none' : 'block';
+  filteredPhotos.forEach((p, i) => {
     const div = document.createElement('div');
     div.className = 'photo';
-    div.innerHTML = `<img src="${url(p.name)}" alt="" loading="lazy">` +
-      (isAdmin ? `<button class="del" onclick="event.stopPropagation(); delPhoto(${i})">✕</button>` : '');
+    const dispName = p.name.replace(/^\d+_\d+_/, '').replace(/^\d{13}_/, '');
+    div.innerHTML = `<img src="${url(p.name)}" alt="" loading="lazy"><div class="overlay"></div>` +
+      `<div class="actions">` +
+      `<button onclick="event.stopPropagation(); downloadPhoto(${i})" title="Скачать">📥</button>` +
+      (isAdmin ? `<button onclick="event.stopPropagation(); delPhoto(${i})" title="Удалить">✕</button>` : '') +
+      `</div>`;
     div.onclick = () => openLightbox(i);
     g.appendChild(div);
   });
@@ -252,34 +410,75 @@ function render() {
 // === Лайтбокс ===
 function openLightbox(i) {
   current = i;
-  document.getElementById('lbImg').src = url(photos[i].name);
+  stopSlideshow();
+  document.getElementById('lbImg').src = url(filteredPhotos[i].name);
   document.getElementById('lightbox').classList.add('active');
+  updateSlideshowBtn();
 }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+function closeLightbox() { stopSlideshow(); document.getElementById('lightbox').classList.remove('active'); }
 function step(d) {
-  current = (current + d + photos.length) % photos.length;
-  document.getElementById('lbImg').src = url(photos[current].name);
+  current = (current + d + filteredPhotos.length) % filteredPhotos.length;
+  document.getElementById('lbImg').src = url(filteredPhotos[current].name);
 }
-document.getElementById('lightbox').addEventListener('click', e => {
-  if (e.target.id === 'lightbox') closeLightbox();
-});
+document.getElementById('lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
 document.addEventListener('keydown', e => {
   if (!document.getElementById('lightbox').classList.contains('active')) return;
   if (e.key === 'Escape') closeLightbox();
   if (e.key === 'ArrowLeft') step(-1);
   if (e.key === 'ArrowRight') step(1);
+  if (e.key === ' ') { e.preventDefault(); toggleSlideshow(); }
 });
+
+// === Свайп ===
+document.getElementById('lightbox').addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+document.getElementById('lightbox').addEventListener('touchend', e => {
+  touchEndX = e.changedTouches[0].screenX;
+  const diff = touchStartX - touchEndX;
+  if (Math.abs(diff) > 60) step(diff > 0 ? 1 : -1);
+}, { passive: true });
+
+// === Слайдшоу ===
+function toggleSlideshow() {
+  if (slideshowOn) stopSlideshow();
+  else startSlideshow();
+}
+function startSlideshow() {
+  slideshowOn = true;
+  slideshowTimer = setInterval(() => step(1), 3000);
+  updateSlideshowBtn();
+}
+function stopSlideshow() {
+  slideshowOn = false;
+  if (slideshowTimer) { clearInterval(slideshowTimer); slideshowTimer = null; }
+  updateSlideshowBtn();
+}
+function updateSlideshowBtn() {
+  const btn = document.getElementById('slideshowBtn');
+  btn.textContent = slideshowOn ? '⏸' : '▶';
+  btn.classList.toggle('active', slideshowOn);
+}
+
+// === Скачивание ===
+function downloadPhoto(i) {
+  const p = filteredPhotos[i];
+  const a = document.createElement('a');
+  a.href = url(p.name);
+  a.download = p.name.replace(/^\d+_\d+_/, '');
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function downloadCurrent() { downloadPhoto(current); }
 
 // === Админ ===
 function openAdmin() {
   if (isAdmin) {
     if (!ghToken) { openModal('tokenModal'); return; }
-    openModal('uploadModal');
-    return;
+    openModal('uploadModal'); return;
   }
   openModal('adminModal');
 }
-
 function enterAdmin() {
   if (document.getElementById('adminInput').value === ADMIN_PASSWORD) {
     isAdmin = true;
@@ -291,38 +490,71 @@ function enterAdmin() {
   }
 }
 
-// === Загрузка файлов ===
+// === Загрузка с сжатием ===
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
+const qualitySlider = document.getElementById('qualitySlider');
+const qualityVal = document.getElementById('qualityVal');
+qualitySlider.addEventListener('input', () => { qualityVal.textContent = qualitySlider.value + '%'; });
+
 dropZone.addEventListener('click', () => fileInput.click());
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('over'); handleFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
-function toBase64(file) {
+function compressImage(file, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 1920;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality / 100);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function toBase64(blob) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result.split(',')[1]);
     r.onerror = reject;
-    r.readAsDataURL(file);
+    r.readAsDataURL(blob);
   });
 }
 
 async function handleFiles(files) {
   if (!isAdmin || !ghToken) { document.getElementById('upErr').textContent = 'Нужен админ-доступ и токен'; return; }
+  const quality = parseInt(qualitySlider.value);
   const prog = document.getElementById('progress');
   prog.classList.add('active');
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
+  let uploaded = 0;
+  const total = [...files].filter(f => f.type.startsWith('image/')).length;
+  for (const f of files) {
     if (!f.type.startsWith('image/')) continue;
-    if (f.size > 50 * 1024 * 1024) {
-      document.getElementById('upErr').textContent = 'Файл больше 50 МБ — уменьши.';
-      prog.classList.remove('active'); return;
+    uploaded++;
+    document.getElementById('upErr').textContent = `Сжатие и загрузка… ${uploaded}/${total}`;
+    const compressed = await compressImage(f, quality);
+    const sizeMB = (compressed.size / 1024 / 1024).toFixed(1);
+    if (compressed.size > 45 * 1024 * 1024) {
+      document.getElementById('upErr').textContent = `Файл ${f.name} (${sizeMB} МБ) слишком большой даже после сжатия. Пропускаю.`;
+      continue;
     }
-    const safe = f.name.replace(/[^a-zA-Z0-9._\-]/g, '_');
-    const path = `${Date.now()}_${i}_${safe}`;
-    const b64 = await toBase64(f);
+    const safe = f.name.replace(/[^a-zA-Z0-9._\-]/g, '_').replace(/\.[^.]+$/, '.jpg');
+    const path = `${Date.now()}_${uploaded}_${safe}`;
+    const b64 = await toBase64(compressed);
     const res = await fetch(`${apiBase}/contents/${PHOTOS_DIR}/${path}`, {
       method: 'PUT',
       headers: {
@@ -337,8 +569,9 @@ async function handleFiles(files) {
       document.getElementById('upErr').textContent = 'Ошибка: ' + t.slice(0, 120);
       prog.classList.remove('active'); return;
     }
-    prog.firstElementChild.style.width = ((i + 1) / files.length * 100) + '%';
+    prog.firstElementChild.style.width = (uploaded / total * 100) + '%';
   }
+  document.getElementById('upErr').textContent = '';
   prog.classList.remove('active');
   prog.firstElementChild.style.width = '0';
   fileInput.value = '';
@@ -346,7 +579,7 @@ async function handleFiles(files) {
 
 // === Удаление ===
 async function delPhoto(i) {
-  const p = photos[i];
+  const p = filteredPhotos[i];
   if (!confirm('Удалить фото?')) return;
   const res = await fetch(`${apiBase}/contents/${PHOTOS_DIR}/${p.name}?ref=${GH_BRANCH}`, {
     method: 'DELETE',
